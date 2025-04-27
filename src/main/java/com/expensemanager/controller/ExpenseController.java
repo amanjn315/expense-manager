@@ -9,15 +9,14 @@
 
 package com.expensemanager.controller;
 
+import com.expensemanager.exception.ResourceNotFoundException;
 import com.expensemanager.model.Expense;
 import com.expensemanager.model.User;
 import com.expensemanager.repo.ExpenseRepo;
 import com.expensemanager.repo.UserRepo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -38,5 +37,47 @@ public class ExpenseController {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepo.findByEmail(email).orElseThrow();
         return expenseRepo.findByUser(user);
+    }
+
+    @PostMapping
+    public Expense createExpense(@RequestBody Expense expense){
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepo.findByEmail(email).orElseThrow();
+        expense.setUser(user);
+        return expenseRepo.save(expense);
+    }
+
+    @PutMapping("/{id}")
+    public Expense updateExpense(@PathVariable Long id, @RequestBody Expense updatedExpense) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepo.findByEmail(email).orElseThrow();
+
+        Expense expense = expenseRepo.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Expense Not Found"));
+        if(!expense.getUser().getId().equals(user.getId())){
+            throw new RuntimeException("Unauthorized Access to Expense");
+        }
+
+        expense.setTitle(updatedExpense.getTitle());
+        expense.setCategory(updatedExpense.getCategory());
+        expense.setAmount(updatedExpense.getAmount());
+        expense.setDate(updatedExpense.getDate());
+
+        return expenseRepo.save(expense);
+    }
+
+    @DeleteMapping("/{id}")
+    public String deleteExpense(@PathVariable Long id){
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepo.findByEmail(email).orElseThrow();
+
+        Expense expense = expenseRepo.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Expense Not Found"));
+        if(!expense.getUser().getId().equals(user.getId())){
+            throw new RuntimeException("Unauthorized Access to Expense");
+        }
+
+        expenseRepo.delete(expense);
+        return "Expense Deleted Successfully";
     }
 }
