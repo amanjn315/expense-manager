@@ -9,6 +9,7 @@
 
 package com.expensemanager.controller;
 
+import com.expensemanager.dto.ExpenseSummaryResponse;
 import com.expensemanager.exception.ResourceNotFoundException;
 import com.expensemanager.model.Expense;
 import com.expensemanager.model.User;
@@ -18,7 +19,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * @author amanjain
@@ -32,11 +36,22 @@ public class ExpenseController {
     private final UserRepo userRepo;
 
     @GetMapping
-    public List<Expense> getMyExpenses() {
-        System.out.println("Accessed by: " + SecurityContextHolder.getContext().getAuthentication().getName());
+    public List<Expense> getExpensesByDateRange(
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to) {
+
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepo.findByEmail(email).orElseThrow();
-        return expenseRepo.findByUser(user);
+
+        // If no filters are given, return all
+        if (from == null || to == null) {
+            return expenseRepo.findByUser(user);
+        }
+
+        LocalDate start = LocalDate.parse(from);
+        LocalDate end = LocalDate.parse(to);
+
+        return expenseRepo.findByUserAndDateBetween(user, start, end);
     }
 
     @PostMapping
@@ -80,4 +95,33 @@ public class ExpenseController {
         expenseRepo.delete(expense);
         return "Expense Deleted Successfully";
     }
+
+    @GetMapping("/summary")
+    public ExpenseSummaryResponse getExpenseSummary(
+            @RequestParam String from,
+            @RequestParam String to) {
+
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepo.findByEmail(email).orElseThrow();
+
+        LocalDate start = LocalDate.parse(from);
+        LocalDate end = LocalDate.parse(to);
+
+        List<Expense> expenses = expenseRepo.findByUserAndDateBetween(user, start, end);
+
+        double total = 0.0;
+        Map<String, Double> categoryTotals = new HashMap<>();
+
+        for (Expense exp : expenses) {
+            total += exp.getAmount();
+            categoryTotals.merge(
+                    exp.getCategory(),
+                    exp.getAmount(),
+                    Double::sum
+            );
+        }
+
+        return new ExpenseSummaryResponse(total, categoryTotals);
+    }
+
 }

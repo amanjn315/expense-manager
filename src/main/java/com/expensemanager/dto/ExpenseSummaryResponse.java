@@ -7,23 +7,20 @@
  * You should have received a copy of the GNU General Public License along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-package com.expensemanager.repo;
+package com.expensemanager.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+
+import java.util.Map;
 
 /**
  * @author amanjain
  **/
 
-import com.expensemanager.model.Expense;
-import com.expensemanager.model.User;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
-
-import java.time.LocalDate;
-import java.util.List;
-
-@Repository
-public interface ExpenseRepo extends JpaRepository<Expense, Long> {
-    List<Expense> findByUser(User user);
-
-    List<Expense> findByUserAndDateBetween(User user, LocalDate start, LocalDate end);
+@Data
+@AllArgsConstructor
+public class ExpenseSummaryResponse {
+    private Double totalAmount;
+    private Map<String, Double> categoryTotals;
 }
